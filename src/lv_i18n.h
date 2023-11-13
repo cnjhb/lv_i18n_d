@@ -79,9 +79,10 @@ const char * lv_i18n_get_current_locale(void);
 void __lv_i18n_reset(void);
 
 
-#define _(text) lv_i18n_get_text(text)
+#define _(text) (text)
 #define _p(text, num) lv_i18n_get_text_plural(text, num)
 
+#define LV_I18N_FASTER 0
 
 #ifdef __cplusplus
 } /* extern "C" */

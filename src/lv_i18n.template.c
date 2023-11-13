@@ -140,6 +140,12 @@ void __lv_i18n_reset(void)
  * Set the languages for internationalization
  * @param langs pointer to the array of languages. (Last element has to be `NULL`)
  */
+
+#if LV_I18N_FASTER
+#include <glib.h>
+static GHashTable* table;
+#endif
+
 int lv_i18n_init(const lv_i18n_language_pack_t * langs)
 {
     if(langs == NULL) return -1;
@@ -147,6 +153,21 @@ int lv_i18n_init(const lv_i18n_language_pack_t * langs)
 
     current_lang_pack = langs;
     current_lang = langs[0];     /*Automatically select the first language*/
+#if LV_I18N_FASTER
+    table=g_hash_table_new(g_str_hash,g_str_equal);
+    for(int i=0; langs[i];i++){
+	if(!langs[i]->locale_name)
+		continue;
+	GHashTable* current=g_hash_table_new(g_str_hash,g_str_equal);
+	g_hash_table_insert(table,langs[i]->locale_name,current);
+	if(langs[i]->singulars){
+		lv_i18n_phrase_t* sing=langs[i]->singulars;
+		for(int j=0;sing[j].msg_id;j++){
+			g_hash_table_insert(current,sing[j].msg_id,sing[j].translation);
+		}
+	}
+    }
+#endif
     return 0;
 }
 
@@ -205,11 +226,19 @@ const char * lv_i18n_get_text(const char * msg_id)
     if(current_lang == NULL) return msg_id;
 
     const lv_i18n_lang_t * lang = current_lang;
-    const void * txt;
+    const void * txt=NULL;
 
     // Search in current locale
     if(lang->singulars != NULL) {
+#if LV_I18N_FASTER
+	GHashTable* current=g_hash_table_lookup(table,lang->locale_name);
+	if(current)
+	{
+		txt=g_hash_table_lookup(current,msg_id);
+	}
+#else
         txt = __lv_i18n_get_text_core(lang->singulars, msg_id);
+#endif
         if (txt != NULL) return txt;
     }
 
